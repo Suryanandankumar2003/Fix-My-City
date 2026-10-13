@@ -60,7 +60,7 @@ FixMyCity/
 ├── backend/
 │   ├── main.py
 │   ├── requirements.txt
-│   ├── .env.example
+│   ├── .env
 │   └── uploads/              # Created automatically at runtime
 ├── frontend/
 │   ├── index.html
