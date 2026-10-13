@@ -392,7 +392,7 @@ This is a learning/portfolio project, not a security-audited civic service. Befo
 
 ## Portfolio description
 
-**FixMyCity — Full-Stack Civic Issue Reporting Platform**
+**FixMyCity — Civic Issue Reporting Platform**
 
 Developed a responsive civic issue reporting platform using React, FastAPI, and SQLAlchemy, with SQLite/PostgreSQL database support. Implemented JWT-based authentication, role-based authorization, issue reporting with image uploads, administrative status and priority management, department assignment, search/filtering, and public issue visibility. Documented REST APIs with FastAPI Swagger UI.
 
