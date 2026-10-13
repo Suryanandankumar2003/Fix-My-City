@@ -2085,3 +2085,117 @@ button:disabled {
   background: #e9f6ed;
   color: #397b51
 }
+
+
+/* Admin user management enhancements */
+.user-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 20px
+}
+
+.user-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  min-width: 0
+}
+
+.user-summary-card span {
+  font-size: 10px;
+  color: #77867d;
+  font-weight: 700
+}
+
+.user-summary-card strong {
+  font: 800 25px Manrope, sans-serif;
+  letter-spacing: -.7px;
+  color: #213d31
+}
+
+.user-summary-card small {
+  font-size: 10px;
+  color: #9aa59e
+}
+
+.user-list-toolbar {
+  align-items: center
+}
+
+.admin-user-help {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 14px 2px;
+  color: #748579;
+  font-size: 10px;
+  line-height: 1.5
+}
+
+.role-action {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap
+}
+
+.role-action.promote {
+  background: #e7f5eb;
+  color: #267149;
+  border-color: #d3e9da
+}
+
+.role-action.promote:hover {
+  background: #d8efdf
+}
+
+.role-action.demote {
+  background: #fff3e5;
+  color: #9b5c19;
+  border-color: #f0dfc8
+}
+
+.role-action.demote:hover {
+  background: #ffe8cb
+}
+
+.role-action:disabled {
+  opacity: .55;
+  cursor: wait
+}
+
+.current-account-label {
+  font-size: 10px;
+  color: #89968e
+}
+
+@media(max-width:1000px) {
+  .user-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+  }
+}
+
+@media(max-width:520px) {
+  .user-summary-grid {
+    gap: 8px
+  }
+
+  .user-summary-card {
+    padding: 12px
+  }
+
+  .user-summary-card strong {
+    font-size: 22px
+  }
+
+  .user-list-toolbar .filter-box {
+    flex-basis: 100%
+  }
+}

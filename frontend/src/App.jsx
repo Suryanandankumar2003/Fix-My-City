@@ -18,6 +18,8 @@ function App() {
   const [departments, setDepartments] = useState([]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
+  const [userQuery, setUserQuery] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("All");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -68,6 +70,12 @@ function App() {
     const source = user?.role === "admin" ? publicIssues : issues;
     return { total: source.length, progress: source.filter(i => i.status === "In Progress").length, resolved: source.filter(i => i.status === "Resolved").length, submitted: source.filter(i => i.status === "Submitted" || i.status === "Under Review").length };
   }, [issues, publicIssues, user]);
+  const filteredAdminUsers = useMemo(() => adminUsers.filter((item) => {
+    const term = userQuery.trim().toLowerCase();
+    const matchesQuery = !term || `${item.name} ${item.email} ${item.role} ${item.id}`.toLowerCase().includes(term);
+    const matchesRole = userRoleFilter === "All" || item.role === userRoleFilter;
+    return matchesQuery && matchesRole;
+  }), [adminUsers, userQuery, userRoleFilter]);
 
   const authenticate = async (e) => {
     e.preventDefault(); setError(""); setBusy(true);
@@ -121,6 +129,27 @@ function App() {
       setNotice(`Issue #${issue.id} updated.`); setAdminEdits(p => ({ ...p, [issue.id]: {} })); await loadData();
     } catch (e) { sayError(e); }
   };
+  const changeUserRole = async (targetUser) => {
+    const nextRole = targetUser.role === "admin" ? "citizen" : "admin";
+    const action = nextRole === "admin" ? "promote this user to admin" : "change this admin to a citizen";
+    if (!window.confirm(`Are you sure you want to ${action}?
+
+${targetUser.name} (${targetUser.email})`)) return;
+
+    setBusy(true);
+    setError("");
+    try {
+      const { data } = await api.patch(`/admin/users/${targetUser.id}/role`, { role: nextRole });
+      setAdminUsers(previous => previous.map(item => item.id === data.id ? data : item));
+      const { data: latestStats } = await api.get("/admin/stats");
+      setStats(latestStats);
+      setNotice(`${data.name} is now ${data.role === "admin" ? "an admin" : "a citizen"}.`);
+    } catch (e) {
+      sayError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
   const nav = user?.role === "admin" ? [
     { id: "overview", label: "Admin dashboard", icon: Activity },
     { id: "my-issues", label: "All issues", icon: ClipboardList },
@@ -173,9 +202,16 @@ function App() {
         </>}
 
         {view === "users" && user?.role === "admin" && <>
-          <section className="welcome-row compact"><div><div className="eyebrow">ADMINISTRATION / USERS</div><h1>All registered users</h1><p>Review every account and see how many civic issues each person has reported.</p></div></section>
-          <div className="list-toolbar"><div className="search-box"><Search size={17} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search name or email…" /></div><span className="result-count">{adminUsers.filter(u => !query || `${u.name} ${u.email} ${u.role}`.toLowerCase().includes(query.toLowerCase())).length} users</span></div>
-          <AdminUsersTable users={adminUsers.filter(u => !query || `${u.name} ${u.email} ${u.role}`.toLowerCase().includes(query.toLowerCase()))} />
+          <section className="welcome-row compact"><div><div className="eyebrow">ADMINISTRATION / USERS</div><h1>User management</h1><p>Search accounts, review report activity, and control administrator access.</p></div><button className="button button-outline" onClick={loadData} disabled={busy}><Activity size={16} /> Refresh users</button></section>
+          <section className="user-summary-grid">
+            <div className="user-summary-card"><span>Total accounts</span><strong>{adminUsers.length}</strong><small>All registered users</small></div>
+            <div className="user-summary-card"><span>Administrators</span><strong>{adminUsers.filter(item => item.role === "admin").length}</strong><small>Privileged accounts</small></div>
+            <div className="user-summary-card"><span>Citizens</span><strong>{adminUsers.filter(item => item.role === "citizen").length}</strong><small>Community members</small></div>
+            <div className="user-summary-card"><span>Total reports</span><strong>{adminUsers.reduce((total, item) => total + (item.issue_count || 0), 0)}</strong><small>Across all accounts</small></div>
+          </section>
+          <div className="list-toolbar user-list-toolbar"><div className="search-box"><Search size={17} /><input value={userQuery} onChange={e => setUserQuery(e.target.value)} placeholder="Search name, email, role or account ID…" /></div><div className="filter-box"><Filter size={16} /><select aria-label="Filter users by role" value={userRoleFilter} onChange={e => setUserRoleFilter(e.target.value)}><option value="All">All roles</option><option value="citizen">Citizens</option><option value="admin">Admins</option></select></div><span className="result-count">{filteredAdminUsers.length} of {adminUsers.length} users</span></div>
+          <AdminUsersTable users={filteredAdminUsers} onRoleChange={changeUserRole} currentUserId={user.id} showActions busy={busy} />
+          <p className="admin-user-help"><ShieldCheck size={15} /> You cannot change your own role. The last remaining administrator cannot be demoted.</p>
         </>}
 
         {view === "report" && user && <><section className="welcome-row compact"><div><div className="eyebrow">COMMUNITY REPORT</div><h1>Report an issue</h1><p>Tell us what needs attention. Clear details help the right team respond.</p></div></section><form className="form-card" onSubmit={createIssue}><div className="form-section-title"><span className="step-number">01</span><div><h3>Issue details</h3><p>Describe the problem as clearly as you can.</p></div></div><div className="form-grid"><label className="span-2">Issue title<input required minLength="5" maxLength="160" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. Large pothole near the bus stop" /></label><label>Category<select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>{categories.map(c => <option key={c}>{c}</option>)}</select></label><label>Location / landmark<input required minLength="3" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Street, area, or landmark" /></label><div className="span-2 map-picker-section"><div className="map-picker-heading"><div><strong>Pinpoint the issue on the map</strong><p>Use your device location, or click the map / drag the pin to the actual issue.</p></div><button type="button" className="button button-outline small" onClick={useCurrentLocation}><MapPin size={15} /> Use my current location</button></div><LocationPicker position={form.latitude != null && form.longitude != null ? [form.latitude, form.longitude] : null} center={mapCenter} onSelect={selectMapLocation} /><div className="map-location-footer">{form.latitude != null && form.longitude != null ? <><span className="map-selected-dot" /> <span>Selected: {form.latitude.toFixed(6)}, {form.longitude.toFixed(6)}</span></> : <span>Select a point on the map to continue.</span>}</div>{locationMessage && <p className="map-message">{locationMessage}</p>}</div><label className="span-2">Description<textarea required minLength="10" maxLength="5000" rows="5" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="What happened? Where exactly? Is there any safety concern?" /></label><label className="span-2">Photo (optional)<div className="upload-box"><ImagePlus size={22} /><div><strong>{image ? image.name : "Add a photo of the issue"}</strong><span>JPG, PNG or WEBP · Maximum 5 MB</span></div><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setImage(e.target.files?.[0] || null)} /><span className="button button-outline small">Browse files</span></div></label></div><div className="form-footer"><span><ShieldCheck size={16} /> Your contact details are never shown on public reports.</span><button className="button button-primary" disabled={busy}>{busy ? "Submitting…" : "Submit report"} <ArrowUpRight size={17} /></button></div></form></>}
@@ -192,9 +228,9 @@ function App() {
   </div>;
 }
 
-function AdminUsersTable({ users }) {
-  if (!users?.length) return <div className="empty-state"><div className="empty-icon"><Users size={25} /></div><h3>No users found</h3><p>Registered accounts will appear here.</p></div>;
-  return <div className="admin-table-wrap"><table className="admin-users-table"><thead><tr><th>User</th><th>Email</th><th>Role</th><th>Reports</th><th>Joined</th></tr></thead><tbody>{users.map(u => <tr key={u.id}><td><div className="admin-user-name"><span className="avatar">{u.name?.[0]?.toUpperCase()}</span><span>{u.name}<small>Account #{u.id}</small></span></div></td><td>{u.email}</td><td><span className={`role-pill ${u.role === "admin" ? "admin" : "citizen"}`}>{u.role === "admin" ? "Admin" : "Citizen"}</span></td><td>{u.issue_count ?? 0}</td><td>{fmt(u.created_at)}</td></tr>)}</tbody></table></div>;
+function AdminUsersTable({ users, onRoleChange, currentUserId, showActions = false, busy = false }) {
+  if (!users?.length) return <div className="empty-state"><div className="empty-icon"><Users size={25} /></div><h3>No users found</h3><p>Try another search or role filter. Registered accounts will appear here.</p></div>;
+  return <div className="admin-table-wrap"><table className="admin-users-table"><thead><tr><th>User</th><th>Email</th><th>Role</th><th>Reports</th><th>Joined</th>{showActions && <th>Access</th>}</tr></thead><tbody>{users.map(u => <tr key={u.id}><td><div className="admin-user-name"><span className="avatar">{u.name?.[0]?.toUpperCase()}</span><span>{u.name}<small>Account #{u.id}{u.id === currentUserId ? " · You" : ""}</small></span></div></td><td>{u.email}</td><td><span className={`role-pill ${u.role === "admin" ? "admin" : "citizen"}`}>{u.role === "admin" ? "Admin" : "Citizen"}</span></td><td>{u.issue_count ?? 0}</td><td>{fmt(u.created_at)}</td>{showActions && <td>{u.id === currentUserId ? <span className="current-account-label">Current account</span> : <button className={`role-action ${u.role === "admin" ? "demote" : "promote"}`} disabled={busy} onClick={() => onRoleChange(u)}>{u.role === "admin" ? "Make citizen" : "Make admin"}</button>}</td>}</tr>)}</tbody></table></div>;
 }
 
 function Stat({ icon: Icon, label, value, tone, note }) {

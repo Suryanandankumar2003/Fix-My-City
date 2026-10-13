@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Literal
 import os
 import shutil
 import uuid
@@ -164,6 +165,9 @@ class DepartmentIn(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     description: str = Field(default="", max_length=255)
 
+class UserRoleUpdate(BaseModel):
+    role: Literal["admin", "citizen"]
+
 @app.get("/")
 def root():
     return {"name": "FixMyCity API", "docs": "/docs", "health": "/api/health"}
@@ -306,15 +310,51 @@ def upload_issue_image(issue_id: int, file: UploadFile = File(...), db: Session 
 def admin_stats(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
     total = db.query(Issue).count()
     by_status = {status: db.query(Issue).filter(Issue.status == status).count() for status in STATUSES}
-    return {"total_issues": total, "total_users": db.query(User).count(), "by_status": by_status}
+    return {
+        "total_issues": total,
+        "total_users": db.query(User).count(),
+        "total_admins": db.query(User).filter(User.role == "admin").count(),
+        "total_citizens": db.query(User).filter(User.role == "citizen").count(),
+        "by_status": by_status,
+    }
 
 @app.get("/api/admin/users")
 def admin_users(db: Session = Depends(get_db), admin: User = Depends(require_admin)):
     users = db.query(User).order_by(User.created_at.desc()).all()
+    issue_counts = dict(
+        db.query(Issue.user_id, func.count(Issue.id))
+        .group_by(Issue.user_id)
+        .all()
+    )
     return [
-        {**user_out(user), "issue_count": db.query(Issue).filter(Issue.user_id == user.id).count()}
+        {**user_out(user), "issue_count": issue_counts.get(user.id, 0)}
         for user in users
     ]
+
+@app.patch("/api/admin/users/{user_id}/role")
+def update_user_role(
+    user_id: int,
+    data: UserRoleUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if target.id == admin.id and data.role != target.role:
+        raise HTTPException(status_code=400, detail="You cannot change your own role")
+
+    if target.role == "admin" and data.role == "citizen":
+        admin_count = db.query(User).filter(User.role == "admin").count()
+        if admin_count <= 1:
+            raise HTTPException(status_code=409, detail="The last administrator cannot be demoted")
+
+    target.role = data.role
+    db.commit()
+    db.refresh(target)
+    issue_count = db.query(Issue).filter(Issue.user_id == target.id).count()
+    return {**user_out(target), "issue_count": issue_count}
 
 from fastapi.staticfiles import StaticFiles
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
