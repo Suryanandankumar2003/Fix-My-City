@@ -1,70 +1,89 @@
 # FixMyCity — Civic Issue Reporting Platform
 
-FixMyCity is a portfolio-ready full-stack web application for reporting and tracking local civic issues such as potholes, broken streetlights, garbage accumulation, water leakage, and damaged public infrastructure.
+FixMyCity is a full-stack civic issue reporting and tracking application. It helps citizens report local problems—such as potholes, broken streetlights, garbage accumulation, water leakage, and damaged public infrastructure—and follow their progress. Administrators have a separate workspace to review platform-wide reports, manage issue status and priority, assign departments, and view registered users.
 
-Citizens can create accounts, submit reports with optional photographs, and follow status updates. Administrators can review all reports, set priority, assign departments, and update progress. A public community feed provides limited, non-sensitive report information.
+> **Project status:** Educational portfolio project. Review the security checklist before deploying it or using it with real citizens or sensitive information.
 
-> **Project status:** Educational portfolio starter. Review the security and deployment notes before using it with real users or sensitive information.
+## Contents
+
+- [Features](#features)
+- [Technology stack](#technology-stack)
+- [Project structure](#project-structure)
+- [Requirements](#requirements)
+- [Run locally on Windows](#run-locally-on-windows-powershell)
+- [Roles and dashboards](#roles-and-dashboards)
+- [Promote a registered user to admin](#promote-a-registered-user-to-admin)
+- [Configuration](#configuration)
+- [API reference](#api-reference)
+- [Issue lifecycle](#issue-lifecycle)
+- [Map and image uploads](#map-and-image-uploads)
+- [Troubleshooting](#troubleshooting)
+- [Security checklist](#security-checklist)
+- [Portfolio description](#portfolio-description)
 
 ## Features
 
-### Citizen
-- Register and sign in using email and password.
-- Create reports with title, description, category, and location.
-- Optionally attach JPG, PNG, or WEBP images (maximum 5 MB).
-- View personal reports and status history.
-- Search and filter reports by status, title, category, or location.
-- Open report details and view its progress timeline.
+### Citizen dashboard
+- Register and sign in using an email address and password.
+- Submit a civic issue with a title, description, category, and location.
+- Attach an optional JPG, PNG, or WEBP image (maximum 5 MB).
+- View and track personal reports and their status history.
+- Search and filter issues using available report fields.
+- View issue details and progress.
+- Browse the public community feed, which should contain only limited, non-sensitive report information.
 
-### Administrator
-- Access all reports.
-- Change issue status and priority.
+### Administrator dashboard
+- Use a dedicated admin workspace separate from the citizen dashboard.
+- View platform-wide issue statistics.
+- View reports submitted by all users.
+- Review issue details and update status and priority.
 - Assign reports to departments.
-- View summary statistics.
-- View registered users through a protected endpoint.
+- View registered users through a protected admin API.
+- Review user information returned by the backend, including report counts if that field is implemented in the current version.
+- Access administrative controls only when authenticated with an admin account.
 
-### Public
-- Browse a public feed of reported issues.
-- Search and filter public reports.
-- Public responses omit reporter email and other account details.
+### Maps and media
+- Select a report location using the map, or use browser location when permission is granted.
+- Store the selected location with the report and view it in issue details.
+- Upload supported image formats for a report.
 
 ### Engineering
 - React + Vite frontend.
-- FastAPI REST API with automatically generated Swagger documentation.
+- FastAPI REST API.
 - SQLAlchemy ORM.
-- SQLite by default for quick local setup; PostgreSQL is supported through `DATABASE_URL`.
+- SQLite for simple local development; PostgreSQL can be configured through `DATABASE_URL` if supported by the current backend configuration.
 - JWT bearer-token authentication and password hashing.
-- Role-based authorization.
-- Pagination for the authenticated issue list.
-- Input validation and basic API error handling.
-- Responsive UI for desktop and mobile.
-- Pytest can be added for automated tests; see the improvements section.
+- Role-based access control for protected API endpoints.
+- Responsive interface for desktop and mobile.
 
 ## Technology stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, Vite, JavaScript |
+| Frontend | React, Vite, JavaScript |
 | UI | CSS, Lucide icons |
 | HTTP client | Axios |
 | Backend | Python, FastAPI |
-| ORM | SQLAlchemy 2 |
-| Database | SQLite by default; PostgreSQL configurable |
-| Authentication | JWT, Passlib password hashing |
-| API docs | FastAPI Swagger UI |
+| ORM | SQLAlchemy |
+| Database | SQLite by default; PostgreSQL configurable if configured |
+| Authentication | JWT bearer tokens and password hashing |
+| API documentation | FastAPI Swagger UI |
+| Maps | Leaflet, React Leaflet, OpenStreetMap tiles |
 
-## Folder structure
+## Project structure
 
 ```text
 FixMyCity/
 ├── backend/
 │   ├── main.py
 │   ├── requirements.txt
-│   ├── .env
-│   └── uploads/              # Created automatically at runtime
+│   ├── .env                  # Local configuration; do not commit secrets
+│   ├── fixmycity.db          # SQLite database, if SQLite is configured
+│   └── uploads/              # Uploaded images; created/used at runtime
 ├── frontend/
 │   ├── index.html
 │   ├── package.json
+│   ├── .env                  # Optional frontend environment configuration
 │   └── src/
 │       ├── App.jsx
 │       ├── api.js
@@ -74,40 +93,30 @@ FixMyCity/
 └── README.md
 ```
 
+The exact files may vary slightly by version. Do not commit `.env`, database files containing real data, uploaded user files, or secrets.
+
 ## Requirements
 
-Install these before running the project:
+Install the following before running the project:
 
-1. **Python 3.11 or newer** — check with `python --version`.
-2. **Node.js 20 or newer (LTS recommended)** — check with `node --version`.
-3. **npm** — check with `npm --version`.
-4. Git is optional, but recommended.
+1. Python 3.11 or newer (check with `python --version`).
+2. Node.js 20 or newer (LTS recommended; check with `node --version`).
+3. npm (check with `npm --version`).
+4. Git is optional.
 
-The default setup uses SQLite, so you do **not** need to install PostgreSQL just to run the application locally.
+The default SQLite setup does not require a separate database server. Docker is not required for local development.
 
----
+## Run locally on Windows (PowerShell)
 
-# Run on Windows (PowerShell)
+The examples below use `F:\projects\FixMyCity`. Replace this path with your own project location.
 
-The instructions below are for Windows and do not require Docker.
-
-## 1. Extract the ZIP
-
-Extract `FixMyCity.zip` to a folder, for example:
-
-```text
-F:\projects\FixMyCity
-```
-
-Open PowerShell and change into the project directory:
+### 1. Open the project
 
 ```powershell
 cd F:\projects\FixMyCity
 ```
 
-Use the actual folder path where you extracted the ZIP.
-
-## 2. Configure the backend
+### 2. Set up the backend
 
 ```powershell
 cd backend
@@ -115,35 +124,34 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r requirements.txt
-Copy-Item .env.example .env
 ```
 
-If PowerShell blocks activation, run this for the current PowerShell session, then activate again:
+If PowerShell blocks virtual-environment activation, run this in the current terminal and activate again:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
 ```
 
-Open `backend\.env` and replace `SECRET_KEY` with a long random secret before using the app beyond local experimentation. The example secret is for development only.
+Create or edit `backend\.env` using the variables expected by your current `main.py` and settings implementation. At minimum, set a unique, long random `SECRET_KEY` if the backend uses one. Do not use a sample secret in a deployed application. If your repository includes an `.env.example`, you can copy it to `.env`; otherwise create `.env` according to the settings used by your code.
 
-Start the API:
+Start the backend from the `backend` directory:
 
 ```powershell
 uvicorn main:app --reload
 ```
 
-Keep this terminal open. The backend should be available at:
+Keep this terminal open. Common local addresses are:
 
-- API root: http://127.0.0.1:8000/
-- Health check: http://127.0.0.1:8000/api/health
-- Swagger API documentation: http://127.0.0.1:8000/docs
+- API root: `http://127.0.0.1:8000/`
+- Health check (if enabled): `http://127.0.0.1:8000/api/health`
+- Swagger UI (if enabled): `http://127.0.0.1:8000/docs`
 
-On first startup, the app creates the SQLite database (`fixmycity.db`) and seeds example department records.
+On startup, the application may create database tables and seed initial department records, depending on the current backend code.
 
-## 3. Start the React frontend
+### 3. Set up and start the frontend
 
-Open a **second** PowerShell terminal:
+Open a second PowerShell terminal:
 
 ```powershell
 cd F:\projects\FixMyCity\frontend
@@ -151,142 +159,162 @@ npm install
 npm run dev
 ```
 
-Use the actual extracted path. Vite will print a local address, normally:
+Open the local URL printed by Vite, commonly `http://localhost:5173`. Keep both terminals running while using the application.
 
-http://localhost:5173
+If your frontend uses `VITE_API_URL`, make sure it points to the backend API base URL expected by `frontend/src/api.js`. Restart Vite after changing frontend environment variables.
 
-Open that address in your browser. Keep both the backend and frontend terminals running while you use the application.
+### 4. Create a citizen account
 
-## 4. Create a citizen account
+1. Open the frontend in your browser.
+2. Choose the sign-in or account-creation option.
+3. Register with a name, email, and password.
+4. Sign in.
+5. Submit a test issue and confirm it appears in your citizen dashboard.
 
-1. Open the frontend URL.
-2. Click **Sign in to report**.
-3. Choose **Create an account**.
-4. Enter your name, email, and password (at least 8 characters).
-5. Sign in and submit a test issue.
+Public registration should assign the `citizen` role automatically. A registration form must not allow a user to choose their own role.
 
-Citizen registration never allows a user to choose the admin role.
+## Roles and dashboards
 
-## 5. Create an administrator account
+FixMyCity separates the user experience by role.
 
-For this starter, administrator creation is intentionally a manual local-development operation. Register a normal user through the UI first, then stop the backend with `Ctrl+C`.
+| Capability | Citizen | Admin |
+|---|---:|---:|
+| View personal reports | Yes | Yes |
+| Submit a report | Yes | If enabled in the UI/API |
+| Browse public community reports | Yes | Yes |
+| View reports from all users | No | Yes |
+| Change issue status and priority | No | Yes |
+| Assign issues to departments | No | Yes |
+| View registered users | No | Yes |
+| View platform-wide statistics | No | Yes |
+| See the API documentation link in the UI | Hidden for normal citizens | Visible only if the frontend condition enables it |
 
-From the `backend` directory, with the virtual environment active, run:
+The frontend can hide navigation links and buttons according to the logged-in role. This is a usability feature, not a security boundary. The backend must independently check authorization for every admin-only endpoint.
+
+## Promote a registered user to admin
+
+The normal registration flow should create citizens. To promote an existing account, use the trusted local-development command if the `promote-admin` CLI code is present in your current `backend/main.py`.
+
+### 1. Register the user first
+
+Create the account through the application with the email address you want to promote.
+
+### 2. Stop the backend
+
+In the terminal running Uvicorn, press `Ctrl+C`.
+
+### 3. Run the promotion command
+
+Open PowerShell in the `backend` directory and activate the backend virtual environment if needed:
 
 ```powershell
-python
+cd F:\projects\FixMyCity\backend
+.\.venv\Scripts\Activate.ps1
+python main.py promote-admin user@example.com
 ```
 
-Paste the following Python code into the interactive prompt, replacing the email with the account you registered:
+Replace `user@example.com` with the registered user's email address.
 
-```python
-from main import SessionLocal, User
+Possible output:
 
-with SessionLocal() as db:
-    user = db.query(User).filter(User.email == "admin@example.com").first()
-    if user is None:
-        print("User not found. Register this email in the app first.")
-    else:
-        user.role = "admin"
-        db.commit()
-        print("Admin role enabled for", user.email)
+```text
+Success! user@example.com is now an admin.
 ```
 
-Exit Python:
+If the email does not match an account in the database, the command should report that the user was not found. If the command prints no result, check that the CLI block is present at the bottom of `main.py` and that the database path is the same one used by Uvicorn.
 
-```python
-exit()
-```
-
-Restart the backend:
+### 4. Restart and sign in again
 
 ```powershell
 uvicorn main:app --reload
 ```
 
-Sign out of the frontend, then sign in with that account again. The app stores the role in the login response, so signing in again refreshes the role in the browser. The administrator can now open **All issues** and manage reports.
+Sign out of the frontend and sign in again with the promoted account so the frontend receives the updated role.
 
-**Never expose this manual role-promotion workflow as a public endpoint.** For a production system, use a secure, audited administrator provisioning process.
+### Important security notes
 
----
+- Run the promotion command only in a trusted local or deployment environment.
+- Never expose an unauthenticated public endpoint that lets a user promote themselves.
+- Do not accept `role: "admin"` from public registration requests.
+- For production, use a controlled, audited administrator provisioning process and protect access to the host and database.
+- Keep a backup before changing roles in a database containing important data.
 
-# Optional: Use PostgreSQL
+## Configuration
 
-SQLite is the default to keep first-time setup simple. To use PostgreSQL locally:
+Configuration names depend on the settings used by the current backend. Review `backend/main.py` and its settings class before adding or changing variables.
 
-1. Install PostgreSQL and create a database named `fixmycity`.
-2. Activate the backend virtual environment.
-3. Install a PostgreSQL driver:
+Common configuration items may include:
 
-```powershell
-pip install "psycopg[binary]"
-```
+| Setting | Purpose |
+|---|---|
+| `SECRET_KEY` | Secret used for signing tokens or other security-sensitive operations |
+| `DATABASE_URL` | Database connection string, if supported by the configured backend |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token lifetime, if supported |
+| `FRONTEND_ORIGIN` | Allowed frontend origin for CORS, if used |
+| `UPLOAD_DIR` | Directory for uploaded images, if configurable |
+| `VITE_API_URL` | Frontend API base URL, if used by `frontend/src/api.js` |
 
-4. Edit `backend\.env`:
+Never publish real passwords, signing keys, access tokens, or private environment values in this README or in source control.
 
-```dotenv
-DATABASE_URL=postgresql+psycopg://postgres:YOUR_PASSWORD@localhost:5432/fixmycity
-SECRET_KEY=replace-with-a-long-random-secret
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
-FRONTEND_ORIGIN=http://localhost:5173
-UPLOAD_DIR=uploads
-```
+### Optional PostgreSQL setup
 
-Replace `YOUR_PASSWORD` with your local PostgreSQL password. If the password contains URL-reserved characters, URL-encode them.
+Use PostgreSQL only if the backend is configured to support it:
 
-5. Restart the backend. SQLAlchemy will connect and create the application tables on startup.
+1. Install PostgreSQL and create a database.
+2. Install the appropriate Python database driver required by the SQLAlchemy connection URL.
+3. Set `DATABASE_URL` to the correct connection string.
+4. Restart the backend and verify that it connects to the intended database.
 
-**Database note:** This starter creates tables using `Base.metadata.create_all()`. For an evolving or production database, use Alembic migrations instead. Do not change database engines while reusing an old database file without planning a data migration.
+Do not change database engines while reusing an existing SQLite database without planning a data migration. For a production application, use database migrations rather than relying only on automatic table creation.
 
----
+## API reference
 
-# Main API endpoints
-
-The base API URL is `http://127.0.0.1:8000`.
+The base local API URL is commonly `http://127.0.0.1:8000`. Exact endpoints depend on the current `backend/main.py`.
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| GET | `/api/health` | Public | Health check |
-| GET | `/api/meta` | Public | Categories, statuses, priorities |
-| POST | `/api/auth/register` | Public | Create citizen account |
-| POST | `/api/auth/login` | Public | Sign in and receive JWT |
-| GET | `/api/auth/me` | Signed-in user | Current user profile |
-| GET | `/api/departments` | Public | List departments |
-| POST | `/api/departments` | Admin | Create department |
-| POST | `/api/issues` | Signed-in user | Create issue |
-| GET | `/api/issues` | Signed-in user | List own issues; admin sees all |
-| GET | `/api/issues/public` | Public | Limited public issue feed |
-| GET | `/api/issues/{id}` | Owner or admin | Issue details and history |
-| PATCH | `/api/issues/{id}` | Admin | Update status, priority, department |
-| POST | `/api/issues/{id}/image` | Owner or admin | Upload issue photo |
-| GET | `/api/admin/stats` | Admin | Summary statistics |
-| GET | `/api/admin/users` | Admin | List users |
+| `GET` | `/api/health` | Public, if enabled | Health check |
+| `GET` | `/api/meta` | Public, if enabled | Categories, statuses, and priorities |
+| `POST` | `/api/auth/register` | Public | Register a citizen |
+| `POST` | `/api/auth/login` | Public | Sign in and receive an authentication token |
+| `GET` | `/api/auth/me` | Authenticated | Current user profile |
+| `GET` | `/api/departments` | Depends on backend configuration | List departments |
+| `POST` | `/api/departments` | Admin | Create a department, if implemented |
+| `POST` | `/api/issues` | Authenticated | Create an issue |
+| `GET` | `/api/issues` | Authenticated | List issues; admins may receive all issues |
+| `GET` | `/api/issues/public` | Public, if enabled | Public issue feed |
+| `GET` | `/api/issues/{id}` | Owner or admin | Issue details and history |
+| `PATCH` | `/api/issues/{id}` | Admin | Update status, priority, or department |
+| `POST` | `/api/issues/{id}/image` | Owner or admin | Upload an issue image |
+| `GET` | `/api/admin/stats` | Admin | Platform summary statistics |
+| `GET` | `/api/admin/users` | Admin | List registered users |
 
-For full schemas and the interactive request tester, open `http://127.0.0.1:8000/docs`.
+Use the running backend's Swagger UI, when enabled, to confirm the exact request schemas and current endpoints. Hiding the documentation link in the frontend does not disable direct access to `/docs`. If the docs page must not be available, configure FastAPI to disable it or restrict it separately.
 
-## Example API workflow
+### Typical API workflow
 
-1. Register using `POST /api/auth/register`.
-2. Sign in using `POST /api/auth/login`.
-3. Copy the `access_token` from the response.
-4. In Swagger, click **Authorize** and enter the bearer token as requested by the dialog.
-5. Create an issue with `POST /api/issues`.
-6. Retrieve your issues with `GET /api/issues`.
-7. Promote a development account to admin using the local-only procedure above.
-8. As admin, update an issue with `PATCH /api/issues/{id}`.
+1. Register through `POST /api/auth/register`.
+2. Sign in through `POST /api/auth/login`.
+3. Use the returned token for authenticated requests as a bearer token.
+4. Submit an issue through `POST /api/issues`.
+5. Retrieve permitted issues through `GET /api/issues`.
+6. Use the local admin-promotion procedure for a development account.
+7. As an admin, review all issues and update permitted fields.
 
-Example issue JSON:
+### Example issue payload
+
+Adapt field names to the schema shown by your running API:
 
 ```json
 {
   "title": "Large pothole near the bus stop",
-  "description": "A deep pothole is present near the main bus stop and may be hazardous to two-wheelers.",
+  "description": "A deep pothole is present near the main bus stop.",
   "category": "Roads & Potholes",
   "location": "Main Road, near Central Bus Stop"
 }
 ```
 
-Example admin update JSON:
+### Example admin update payload
 
 ```json
 {
@@ -297,9 +325,9 @@ Example admin update JSON:
 }
 ```
 
-## Status workflow
+## Issue lifecycle
 
-The supported statuses are:
+The statuses supported by the current starter may include:
 
 - `Submitted`
 - `Under Review`
@@ -307,45 +335,49 @@ The supported statuses are:
 - `Resolved`
 - `Rejected`
 
-Priorities are `Low`, `Medium`, `High`, and `Urgent`.
+Priorities may include `Low`, `Medium`, `High`, and `Urgent`. Confirm the accepted values in `backend/main.py` or the API metadata endpoint. Newly created issues commonly begin in `Submitted` status with `Medium` priority. Administrative changes should be recorded in issue history when that behavior is enabled.
 
-New issues start with `Submitted` status and `Medium` priority. Each status/administrative update is recorded in the issue history.
+## Map and image uploads
 
-## Image upload behavior
+### Map locations
+The report form uses a map picker powered by Leaflet/React Leaflet and OpenStreetMap tiles, if those packages and components are enabled in the current frontend. Users may choose a point manually or use browser geolocation after granting permission. Browser geolocation requires permission and a secure context; `localhost` is permitted for local development. If permission is denied, manual map selection can still be used when available.
 
-- Allowed content types: JPEG, PNG, WEBP.
-- Maximum file size: 5 MB.
-- Images are saved in the backend `uploads/` folder.
-- The database stores a relative image path.
-- Only the issue owner or an administrator can upload an image for an issue.
+OpenStreetMap tiles require an internet connection. Avoid exposing a citizen's precise home address or sensitive location in public issue responses.
 
-For production, also validate image contents rather than trusting the browser-provided MIME type, generate safe storage keys, and use a dedicated object store or private media service if appropriate.
+### Image uploads
+The current backend implementation may accept JPEG, PNG, and WEBP images with a maximum size of 5 MB. Confirm the rules in the upload endpoint before changing them.
 
----
+For production, validate file contents instead of trusting only the browser-provided MIME type, use safe generated filenames, enforce size limits, and consider private object storage or malware scanning.
 
-# Troubleshooting
+## Troubleshooting
 
 ### `python` is not recognized
-Install Python from the official Python website and ensure the Python launcher is available. Close and reopen PowerShell after installation.
+Install Python and ensure it is available on `PATH`. Reopen PowerShell after installation.
 
 ### `npm` is not recognized
-Install the current Node.js LTS release and reopen PowerShell.
+Install Node.js LTS and reopen PowerShell.
 
-### PowerShell says scripts are disabled
-Run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` in the current terminal and activate the virtual environment again.
+### PowerShell blocks virtual-environment activation
+Run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
 
 ### `ModuleNotFoundError`
-Confirm the backend virtual environment is activated and run:
+Confirm the backend virtual environment is active, then run:
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-### Frontend says Network Error
-- Verify the backend is running at `http://127.0.0.1:8000`.
-- Visit `http://127.0.0.1:8000/api/health`.
-- Ensure the frontend is running at `http://localhost:5173`.
-- Check the browser developer console for details.
+### Frontend shows a network error
+- Confirm the backend is running.
+- Open the health endpoint if it exists.
+- Check the API URL configured in `frontend/src/api.js` or `frontend/.env`.
+- Check the browser console and backend terminal for errors.
+- Verify CORS configuration if frontend and backend origins differ.
 
 ### Port 8000 is already in use
 Run the backend on another port:
@@ -354,54 +386,53 @@ Run the backend on another port:
 uvicorn main:app --reload --port 8001
 ```
 
-If you do this, set `VITE_API_URL=http://127.0.0.1:8001/api` in `frontend/.env` and restart Vite.
+If the frontend uses `VITE_API_URL`, update it to the API URL expected by your app and restart Vite.
 
-### Login does not reflect a newly granted admin role
-Sign out and sign back in so the browser receives a new user profile and token.
+### Admin promotion prints no output
+- Confirm the CLI function and `if __name__ == "__main__":` block exist in `backend/main.py`.
+- Run the command from the `backend` directory.
+- Make sure the registered email exists in the same database the application uses.
+- Confirm `func` is imported from SQLAlchemy if the function uses `func.lower(...)`.
 
-### Need a clean local database
-Stop the backend, back up any data you want to keep, and delete `backend/fixmycity.db`. The app recreates the database on next startup. This deletes all local users, issues, and issue history.
+### Admin dashboard does not appear after promotion
+Sign out and sign back in to refresh the frontend's user profile. Confirm the database role is `admin` and that admin-only API requests are authorized by the backend.
 
----
+### Resetting the local database
+Stop the backend and back up any data you want to keep. Deleting the SQLite database file removes local accounts, issues, and history. Only do this when you intentionally want a clean development database.
 
-# Security and production checklist
+## Security checklist
 
-This is a learning/portfolio project, not a security-audited civic service. Before production use:
+Before deploying beyond local development:
 
-- Set a unique, high-entropy `SECRET_KEY` in environment configuration.
-- Use HTTPS and secure deployment configuration.
-- Add database migrations and backups.
-- Add automated tests and continuous monitoring.
+- Use a unique, high-entropy secret and keep it outside source control.
+- Use HTTPS and secure deployment settings.
+- Enforce authorization in the backend, not only in the UI.
+- Restrict administrator provisioning and audit administrative actions.
+- Add database migrations, backups, and a recovery plan.
 - Add rate limiting and abuse/spam controls.
-- Validate uploaded image content and consider malware scanning.
-- Add pagination to public feeds and limits to upload/request sizes at the server level.
-- Review CORS settings for the exact deployed frontend origin.
-- Avoid returning precise private addresses or personal data in public responses.
-- Add a formal administrator provisioning and audit process.
-- Add account recovery, email verification, and privacy/retention policies.
-- Use a production-grade database and hosting setup.
+- Validate uploaded file contents and enforce size limits.
+- Review CORS against the exact deployed frontend origin.
+- Avoid exposing private user information or precise sensitive locations in public responses.
+- Add automated tests for authentication, role permissions, and issue workflows.
+- Add account recovery, email verification, and privacy/retention policies where appropriate.
+- Use production-grade database and hosting configuration.
 
-## Suggested next improvements
+## Suggested future improvements
 
-1. Add a map picker and map-based issue discovery.
-2. Add issue assignment to individual staff members.
-3. Add email notifications for status changes.
-4. Add department management UI.
-5. Add automated tests for authentication, authorization, and issue workflows.
-6. Add a proper deployment guide and screenshots to the GitHub README.
+1. Add automated tests for citizen/admin access boundaries.
+2. Add staff assignment and richer department management.
+3. Add notifications when issue status changes.
+4. Add pagination and search for large admin user/issue tables.
+5. Add audit logs for admin actions.
+6. Add deployment instructions and screenshots.
+7. Add a proper open-source license if publishing publicly.
 
 ## Portfolio description
 
 **FixMyCity — Civic Issue Reporting Platform**
 
-Developed a responsive civic issue reporting platform using React, FastAPI, and SQLAlchemy, with SQLite/PostgreSQL database support. Implemented JWT-based authentication, role-based authorization, issue reporting with image uploads, administrative status and priority management, department assignment, search/filtering, and public issue visibility. Documented REST APIs with FastAPI Swagger UI.
+Built a responsive civic issue reporting platform using React, FastAPI, and SQLAlchemy. Implemented JWT authentication, role-based authorization, report submission with image uploads and map locations, issue status and priority management, department assignment, a public issue feed, and separate citizen and administrator dashboards with platform-wide issue and user visibility.
 
 ## License
 
-You may use and modify this project for learning and portfolio purposes. Add a formal open-source license if you plan to publish it publicly.
-
-## Map-based issue locations
-
-The report form includes an OpenStreetMap-powered location picker. A citizen can allow browser location access with **Use my current location**, click anywhere on the map, or drag the pin to the actual issue. The selected latitude and longitude are stored with the issue in SQLite and shown in issue details with a link to OpenStreetMap. Browser geolocation requires permission and a secure context (localhost is allowed during development). If permission is denied, users can still choose a location manually.
-
-The frontend uses `leaflet` and `react-leaflet`; run `npm install` in `frontend/` after pulling the updated project. Map tiles are provided by OpenStreetMap, so the browser needs an internet connection to display the map.
+This repository does not define a formal open-source license unless a separate license file is included. Add a license file before publishing the project with explicit reuse terms.
