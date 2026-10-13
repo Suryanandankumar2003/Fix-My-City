@@ -1,4 +1,4 @@
-# FixMyCity — Full-Stack Civic Issue Reporting Platform
+# FixMyCity — Civic Issue Reporting Platform
 
 FixMyCity is a portfolio-ready full-stack web application for reporting and tracking local civic issues such as potholes, broken streetlights, garbage accumulation, water leakage, and damaged public infrastructure.
 
